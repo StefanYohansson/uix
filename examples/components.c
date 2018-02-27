@@ -112,7 +112,7 @@ void event_motion_notify(void* context, xcb_generic_event_t* event) {
   }
 }
 
-void event_button_press(void* context, xcb_generic_event_t* event) {
+void toggle_on_click(void* context, xcb_generic_event_t* event) {
   struct toggle_t* t = context;
   xcb_button_press_event_t *e = (xcb_button_press_event_t*)event;
   float x = e->event_x, y = e->event_y;
@@ -120,6 +120,30 @@ void event_button_press(void* context, xcb_generic_event_t* event) {
   if (c == 1 && rect_point_is_inside(&(t->frame), x, y)) {
     is_dirty = 1;
     toggle_change_state(t);
+  }
+}
+
+void button_on_click(void* context, xcb_generic_event_t* event) {
+  struct button_t* b = context;
+  xcb_button_press_event_t *e = (xcb_button_press_event_t*)event;
+  float x = e->event_x, y = e->event_y;
+  int c = (int)e->detail;
+  if (c == 1 && rect_point_is_inside(&(b->frame), x, y)) {
+    printf("clicked on button.\n");
+    is_dirty = 1;
+    button_change_state(b, event);
+  }
+}
+
+void button_on_release(void* context, xcb_generic_event_t* event) {
+  struct button_t* b = context;
+  xcb_button_release_event_t *e = (xcb_button_release_event_t*)event;
+  float x = e->event_x, y = e->event_y;
+  int c = (int)e->detail;
+  if (c == 1 && rect_point_is_inside(&(b->frame), x, y)) {
+    printf("clicked on button.\n");
+    is_dirty = 1;
+    button_change_state(b, event);
   }
 }
 
@@ -220,10 +244,11 @@ int main(int UNUSED(argc), char* UNUSED(argv[])) {
   xcb_window_t window;
   xcb_visualtype_t *visual;
   uint32_t mask[2] = { 1,
-                       XCB_EVENT_MASK_EXPOSURE     |
-                       XCB_EVENT_MASK_BUTTON_PRESS |
-                       XCB_EVENT_MASK_KEY_PRESS    |
-                       XCB_EVENT_MASK_KEY_RELEASE  |
+                       XCB_EVENT_MASK_EXPOSURE       |
+                       XCB_EVENT_MASK_BUTTON_PRESS   |
+                       XCB_EVENT_MASK_BUTTON_RELEASE |
+                       XCB_EVENT_MASK_KEY_PRESS      |
+                       XCB_EVENT_MASK_KEY_RELEASE    |
                        XCB_EVENT_MASK_POINTER_MOTION };
 
   connection = xcb_connect(NULL, &screenNum);
@@ -266,7 +291,9 @@ int main(int UNUSED(argc), char* UNUSED(argv[])) {
   event_handlers_init();
   event_handler_add(UIX_EXPOSE, NULL, event_expose);
   event_handler_add(UIX_MOUSE_MOTION, &progressui, event_motion_notify);
-  event_handler_add(UIX_MOUSE_PRESS, &toggleui, event_button_press);
+  event_handler_add(UIX_MOUSE_PRESS, &toggleui, toggle_on_click);
+  event_handler_add(UIX_MOUSE_PRESS, &buttonui, button_on_click);
+  event_handler_add(UIX_MOUSE_RELEASE, &buttonui, button_on_release);
   event_handler_add(UIX_MOUSE_PRESS, &radioui, radio_on_click);
 
   cairo_set_source_rgb(cr, 1, 1, 1);
